@@ -20,9 +20,9 @@
 let http = require("http");
 let fs = require('fs');
 
-let MongoClient = require('mongodb').MongoClient;
+const { MongoClient, ServerApiVersion } = require("mongodb");
+let cadenaConnexio = 'mongodb://127.0.0.1:27017/daw2';
 let assert = require('assert'); //utilitzem assercions
-
 let ObjectId = require('mongodb').ObjectID;
 
 let crud = {
@@ -32,13 +32,38 @@ let crud = {
 };
 
 function iniciar() {
+
+    const client = new MongoClient(cadenaConnexio, {
+        serverApi: {
+            version: ServerApiVersion.v1,
+            strict: true,
+            deprecationErrors: true,
+        }
+    }
+    );
+
+
+    async function run() {
+        try {
+            // Connecta el client al servidor (opcional a partir de la versió 4.7)
+            await client.connect();
+            // Envia un ping per confirmar una connexió exitosa
+            await client.db("admin").command({ ping: 1 });
+            console.log("Ping al teu desplegament. T'has connectat correctament a MongoDB!");
+        } finally {
+            // Assegura que el client es tancarà quan acabis/error
+            await client.close();
+        }
+    }
+    run().catch(console.dir);
+
     function onRequest(request, response) {
         let sortida;
         const baseURL = request.protocol + '://' + request.headers.host + '/';
         const reqUrl = new URL(request.url, baseURL);
         console.log("Petició per a  " + reqUrl.pathname + " rebuda.");
         const ruta = reqUrl.pathname;
-        let cadenaConnexio = 'mongodb://localhost:27017/daw2';
+        let cadenaConnexio = 'mongodb://127.0.0.1:27017/daw2';
 
         if (ruta == '/inici') {
             fs.readFile('./M11_mongoDB.html', function (err, sortida) {
@@ -50,46 +75,46 @@ function iniciar() {
             });
         }
         else if (ruta == '/desa') {
-            MongoClient.connect(cadenaConnexio, function (err, client) {
-                assert.equal(null, err);
-                console.log("Connexió correcta");
-                var db = client.db('daw2');
-                db.collection('usuaris').insertOne({
-                    "nom": reqUrl.searchParams.get('nom')
-                });
-                assert.equal(err, null);
-                console.log("Afegit document a col·lecció usuaris");
-               
 
-            });
+
+            async function run() {
+                try {
+                    // Connecta el client al servidor (opcional a partir de la versió 4.7)
+                    await client.connect();
+                    const db = client.db('daw2');
+                    await db.collection('usuaris').insertOne({
+                        "nom": reqUrl.searchParams.get('nom')
+                    });
+                    console.log("Afegit document a col·lecció usuaris");
+
+                } finally {
+                    // Assegura que el client es tancarà quan acabis/error
+                    await client.close();
+                }
+            }
+            run().catch(console.dir);
         }
         else if (ruta == '/consulta') {
-            MongoClient.connect(cadenaConnexio, function (err, client) {
-                assert.equal(null, err);
-                console.log("Connexió correcta");
-                var db = client.db('daw2');
-
-                response.writeHead(200, {
-                    "Content-Type": "text/html; charset=utf-8"
-                });
-                console.log("consulta document a col·lecció usuaris");
-
-                let cursor = db.collection('usuaris').find({});
-
-                cursor.toArray((function (err, results) {
-                    assert.equal(err, null);
-                    if (results != null) {
-                        results.forEach((doc) => {
-                            response.write(`nom ${doc.nom} <br>`);
-                        });
-                    } else {
-                        response.end();
-                    }
-                }));
-               
-
+            response.writeHead(200, {
+                "Content-Type": "text/html; charset=utf-8"
             });
-            
+            console.log("consulta document a col·lecció usuaris");
+            async function run() {
+                try {
+                    // Connecta el client al servidor (opcional a partir de la versió 4.7)
+                    await client.connect();
+                    const db = client.db('daw2');
+                    const usuaris = await db.collection('usuaris').find({}).toArray();
+                    response.write(JSON.stringify(usuaris));
+                    response.end();
+
+                } finally {
+                    // Assegura que el client es tancarà quan acabis/error
+                    await client.close();
+                }
+            }
+            run().catch(console.dir)
+
         }
 
         else {
