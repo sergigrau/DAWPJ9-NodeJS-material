@@ -12,7 +12,9 @@
  * 06.04.2017
  * - millora la sortida de les operacions realitzades amb mongodb
  * 01.11.2021
- * - actualització a client MongoDB 4.x  
+ * - actualització a client MongoDB 4.x
+ * 01.02.2025
+ * - actualització a client MongoDB 8.x  
  * NOTES
  * ORIGEN
  * Desenvolupament Aplicacions Web. Jesuïtes el Clot
@@ -25,9 +27,41 @@ let cadenaConnexio = 'mongodb://127.0.0.1:27017/daw2';
 let assert = require('assert'); //utilitzem assercions
 let ObjectId = require('mongodb').ObjectID;
 
-let crud = {
-    afegirDocument: function (alumne, db, err, callback) {
+let crud = {};
 
+crud.afegirDocument = async function (alumne, db) {
+    try {
+        const result = await db.collection('usuaris').insertOne(alumne);
+        console.log("Afegit document a col·lecció usuaris", result);
+    } catch (err) {
+        console.error("Error afegint document:", err);
+    }
+};
+
+crud.consultarDocuments = async function (db) {
+    try {
+        const usuaris = await db.collection('usuaris').find({}).toArray();
+        return usuaris;
+    } catch (err) {
+        console.error("Error consultant documents:", err);
+    }
+};
+
+crud.actualitzarDocument = async function (id, alumne, db) {
+    try {
+        const result = await db.collection('usuaris').updateOne({ _id: new ObjectId(id) }, { $set: alumne });
+        console.log("Actualitzat document a col·lecció usuaris", result);
+    } catch (err) {
+        console.error("Error actualitzant document:", err);
+    }
+};
+
+crud.eliminarDocument = async function (id, db) {
+    try {
+        const result = await db.collection('usuaris').deleteOne({ _id: new ObjectId(id) });
+        console.log("Eliminat document de col·lecció usuaris", result);
+    } catch (err) {
+        console.error("Error eliminant document:", err);
     }
 };
 
@@ -41,7 +75,6 @@ function iniciar() {
         }
     }
     );
-
 
     async function run() {
         try {
@@ -63,7 +96,6 @@ function iniciar() {
         const reqUrl = new URL(request.url, baseURL);
         console.log("Petició per a  " + reqUrl.pathname + " rebuda.");
         const ruta = reqUrl.pathname;
-        let cadenaConnexio = 'mongodb://127.0.0.1:27017/daw2';
 
         if (ruta == '/inici') {
             fs.readFile('./M11_mongoDB.html', function (err, sortida) {
@@ -82,9 +114,11 @@ function iniciar() {
                     // Connecta el client al servidor (opcional a partir de la versió 4.7)
                     await client.connect();
                     const db = client.db('daw2');
-                    await db.collection('usuaris').insertOne({
+
+                    await crud.afegirDocument({
                         "nom": reqUrl.searchParams.get('nom')
-                    });
+                    }, db);
+
                     console.log("Afegit document a col·lecció usuaris");
 
                 } finally {
@@ -104,7 +138,7 @@ function iniciar() {
                     // Connecta el client al servidor (opcional a partir de la versió 4.7)
                     await client.connect();
                     const db = client.db('daw2');
-                    const usuaris = await db.collection('usuaris').find({}).toArray();
+                    const usuaris = await crud.consultarDocuments(db);
                     response.write(JSON.stringify(usuaris));
                     response.end();
 
